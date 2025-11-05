@@ -35,10 +35,6 @@ const BuyCredit = () => {
           toast.error(data.message || "Could not start checkout");
         }
 
-      if (error) {
-        console.error(error);
-        toast.error(error.message);
-      }
     } catch (err) {
       console.error(err);
       toast.error(err.message);
