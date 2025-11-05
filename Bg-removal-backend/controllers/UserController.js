@@ -69,29 +69,26 @@ const userCredits = async (req, res) => {
   }
 };
 
-//stripe GATEWAY initilize
-const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const currency = (process.env.CURRENCY || "USD").toLowerCase();
 
-//
-//purchase credit
 export const paymentStripe = async (req, res) => {
   try {
-    // you were taking from body, but sometimes you'll have it from middleware too
     const clerkId = req.user?.clerkId || req.body.clerkId;
     const { planId } = req.body;
 
-    const userData = await userModel.findOne({ clerkId });
-    if (!userData || !planId) {
+    const user = await userModel.findOne({ clerkId });
+    if (!user || !planId) {
       return res.json({ success: false, message: "Invalid credentials" });
     }
 
+    // map plans
     let credits, plan, amount;
     switch (planId) {
       case "Basic":
         plan = "Basic";
         credits = 100;
-        amount = 10; // USD/EUR/whatever
+        amount = 10;
         break;
       case "Advanced":
         plan = "Advanced";
@@ -107,41 +104,50 @@ export const paymentStripe = async (req, res) => {
         return res.json({ success: false, message: "Invalid planId" });
     }
 
-    const date = Date.now();
-
-    // 1. create transaction in DB with pending status
-    const transactionData = {
+    // create pending transaction in DB
+    const tx = await transactionModel.create({
       clerkId,
       plan,
       amount,
       credits,
-      date,
       status: "pending",
-    };
-    const newTransaction = await transactionModel.create(transactionData);
-
-    // 2. create Stripe PaymentIntent
-    const paymentIntent = await stripeInstance.paymentIntents.create({
-      amount: amount * 100, // stripe is in cents
-      currency,
-      metadata: {
-        clerkId,
-        transactionId: newTransaction._id.toString(),
-        plan,
-        credits: credits.toString(),
-      },
+      payment: false,
+      date: Date.now(),
     });
 
-    // 3. send clientSecret to frontend
+    // create checkout session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency,
+            unit_amount: amount * 100,
+            product_data: {
+              name: `${plan} Credits (${credits})`,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        clerkId,
+        transactionId: tx._id.toString(),
+        credits: credits.toString(),
+        plan,
+      },
+      success_url: `${process.env.FRONTEND_URL}/payment-success`,
+      cancel_url: `${process.env.FRONTEND_URL}/buy-credits`,
+    });
+
     return res.json({
       success: true,
-      clientSecret: paymentIntent.client_secret,
-      message: "Payment intent created",
+      sessionId: session.id,
     });
   } catch (error) {
     console.log(error.message);
     res.json({ success: false, message: error.message });
   }
 };
-
 export { clerkWebhooks, userCredits };
