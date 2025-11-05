@@ -19,6 +19,9 @@ export const stripeWebhooks = async (req, res) => {
         console.log("Stripe webhook verify error:", err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
+    console.log("Stripe event:", event.type);
+    console.log("Stripe metadata:", event.data.object.metadata);
+
 
     switch (event.type) {
         // user paid successfully on hosted checkout page
