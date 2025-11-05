@@ -21,14 +21,19 @@ const BuyCredit = () => {
         { headers: { token } }
       );
 
-      if (!data.success) {
-        return toast.error(data.message || "Unable to start payment");
-      }
+      // if (!data.success) {
+      //   return toast.error(data.message || "Unable to start payment");
+      // }
 
-      const stripe = await stripePromise;
-      const { error } = await stripe.redirectToCheckout({
-        sessionId: data.sessionId,
-      });
+      // const stripe = await stripePromise;
+      // const { error } = await stripe.redirectToCheckout({
+      //   sessionId: data.sessionId,
+      // });
+        if (data.success && data.url) {
+          window.location.href = data.url; // 👈 go to Stripe hosted page
+        } else {
+          toast.error(data.message || "Could not start checkout");
+        }
 
       if (error) {
         console.error(error);

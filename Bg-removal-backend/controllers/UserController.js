@@ -137,12 +137,13 @@ export const paymentStripe = async (req, res) => {
         credits: credits.toString(),
         plan,
       },
-      success_url: `${process.env.FRONTEND_URL}/payment-success`,
-      cancel_url: `${process.env.FRONTEND_URL}/buy-credits`,
+      success_url: `${process.env.FRONTEND_URL}/buy`,
+      cancel_url: `${process.env.FRONTEND_URL}/buy`,
     });
 
     return res.json({
       success: true,
+      url:session.url,
       sessionId: session.id,
     });
   } catch (error) {
